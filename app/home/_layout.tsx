@@ -1,62 +1,72 @@
 import React, { useState } from 'react';
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import Icon from 'react-native-vector-icons/AntDesign';
-import AddTransactionModal from './addTransaction';
 
 export default function Layout() {
-    const [modalVisible, setModalVisible] = useState(false);
     const router = useRouter();
+    const [selectedTab, setSelectedTab] = useState('dashboard');
 
     const handleTabPress = (e: any, routeName: string) => {
-        if (routeName === 'addTransaction') {
-            e.preventDefault(); // Prevent default tab navigation
-            setModalVisible(true); // Show modal
-        }
-    };
-
-    const handleCloseModal = () => {
-        setModalVisible(false); // Close modal
-        router.push('./dashboard'); // Navigate to dashboard
+        setSelectedTab(routeName);
+        router.push(`./${routeName}`);
     };
 
     return (
-        <>
-            <Tabs
-                screenOptions={({ route }) => ({
-                    tabBarIcon: ({ color, size }) => {
-                        let iconName;
-                        if (route.name === 'dashboard') iconName = 'home';
-                        else if (route.name === 'addTransaction') iconName = 'pluscircle';
-                        return <Icon name={iconName} size={size} color={color} />;
-                    },
-                    tabBarActiveTintColor: '#FFFFFF',
-                    tabBarInactiveTintColor: '#AAAAAA',
-                    tabBarStyle: styles.tabBar,
-                    tabBarShowLabel: false,
-                    headerShown: false,
-                })}
-                screenListeners={{
-                    tabPress: (e) => handleTabPress(e, e.target?.split('-')[0]),
-                }}
-            >
-                <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
-                <Tabs.Screen
-                    name="addTransaction"
-                    options={{ title: 'Add Transaction' }}
-                />
-            </Tabs>
-
-            <AddTransactionModal visible={modalVisible} onClose={handleCloseModal} />
-        </>
+        <Tabs
+            initialRouteName={selectedTab}
+            screenOptions={({ route }) => ({
+                tabBarIcon: ({ color, size }) => {
+                    let iconName;
+                  
+                    switch (route.name) {
+                        case 'dashboard':
+                            iconName = 'appstore-o';
+                            color = selectedTab === 'dashboard' ? "#4CAF50" : "#757575";
+                            break;
+                        case 'profile':
+                            iconName = 'user';
+                            color = selectedTab === 'profile' ? "#4CAF50" : "#757575";
+                            break;
+                        default:
+                            return null;
+                    }
+                    return <Icon name={iconName} size={size} color={color} />;
+                },
+                tabBarActiveTintColor: '#4CAF50',
+                tabBarInactiveTintColor: '#757575',
+                tabBarStyle: styles.tabBar,
+                tabBarShowLabel: false,
+                headerShown: false,
+            })}
+            screenListeners={{
+                tabPress: (e) => {
+                  const routeName = e.target?.split('-')[0];
+                  if (['dashboard', 'profile'].includes(routeName)) {
+                    handleTabPress(e, routeName);
+                  } else {
+                    e.preventDefault(); 
+                  }
+                },
+              }}
+        >
+           
+            <Tabs.Screen name="dashboard" />
+            <Tabs.Screen name="profile" />
+        </Tabs>
     );
 }
 
 const styles = StyleSheet.create({
     tabBar: {
-        backgroundColor: '#333333',
+        backgroundColor: '#FFFFFF',
         borderTopWidth: 0,
         height: 60,
         paddingBottom: 5,
+        paddingTop: 5,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
     },
 });

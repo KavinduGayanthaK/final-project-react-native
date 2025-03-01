@@ -22,7 +22,7 @@ const initialState: UserState = {
   error: null,
 };
  const api = axios.create({
-  baseURL: "http://192.168.1.187:3000",
+  baseURL: "http://192.168.1.187:3001",
 });
 
 // Register User

@@ -1,56 +1,184 @@
-import * as React from 'react';
-import { StyleSheet, View, TouchableOpacity, Image } from "react-native";
+
+import React, { useEffect, useState } from "react";
+import {
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  Image,
+  FlatList,
+  Alert,
+  TouchableWithoutFeedback,
+} from "react-native";
 import Icon from "react-native-vector-icons/Feather";
-import { Avatar, Button, Card, Text } from "react-native-paper";
-import { LinearGradient } from 'expo-linear-gradient';
+import { Text } from "react-native-paper";
+import { LinearGradient } from "expo-linear-gradient";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  getTransaction,
+  deleteTransaction,
+} from "@/reducers/TransactionSlice";
+import { Transaction } from "@/model/Transaction";
+import AddTransactionModal from "../addTransaction";
 
-const LeftContent = props => <Avatar.Icon {...props} icon="folder" />
+export default function Dashboard() {
+  const dispatch = useDispatch();
+  const transactions = useSelector((state) => state.transaction.transaction);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
-export default function dashboard() {
+
+  const calculateIncome = () => 
+    transactions.reduce((total, t) => t.type === "INCOME" ? total + Number(t.amount) : total, 0);
+  
+  const calculateExpense = () => 
+    transactions.reduce((total, t) => t.type === "EXPENSE" ? total + Number(t.amount) : total, 0);
+  
+  const total = calculateIncome() - calculateExpense();
+
+  useEffect(() => {
+    dispatch(getTransaction() as any);
+  }, [dispatch]);
+
+  const handleDelete = (transactionId: string) => {
+    Alert.alert(
+      "Delete Transaction",
+      "Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          onPress: () => {
+            dispatch(deleteTransaction(transactionId) as any);
+            setTimeout(() => dispatch(getTransaction() as any), 1000);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setModalVisible(true);
+  };
+
+  const renderTransactionItem = ({ item }: { item: Transaction }) => (
+    <TouchableWithoutFeedback
+      onPress={() => handleEdit(item)}
+      onLongPress={() => handleDelete(item.id)}
+    >
+      <View style={styles.transactionItem}>
+        <View style={[
+          styles.typeIndicator, 
+          { backgroundColor: item.type === "INCOME" ? "#4CAF50" : "#F44336" }
+        ]} />
+        
+        <View style={styles.transactionContent}>
+          <View style={styles.transactionHeader}>
+            <Text style={styles.transactionCategory}>{item.category}</Text>
+            <Text style={[
+              styles.transactionAmount,
+              { color: item.type === "INCOME" ? "#4CAF50" : "#F44336" }
+            ]}>
+              LKR {item.amount}
+            </Text>
+          </View>
+          
+          <View style={styles.transactionFooter}>
+            <View style={styles.dateBadge}>
+              <Icon name="calendar" size={14} color="#666" />
+              <Text style={styles.transactionDate}>
+                {new Date(item.date).toLocaleDateString()}
+              </Text>
+            </View>
+            <View style={[
+              styles.typeBadge,
+              { backgroundColor: item.type === "INCOME" ? "#E8F5E9" : "#FFEBEE" }
+            ]}>
+              <Text style={[
+                styles.typeText,
+                { color: item.type === "INCOME" ? "#2E7D32" : "#C62828" }
+              ]}>
+                {item.type}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </TouchableWithoutFeedback>
+  );
+
   return (
     <View style={styles.container}>
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        {/* <TouchableOpacity>
-          <Icon name="menu" size={24} color="#fff" />
-        </TouchableOpacity> */}
-        <Text style={styles.balanceText}>POCKET GUARD</Text>
-        <TouchableOpacity style={styles.profileButton}>
-          <Icon name="user" size={24} color="#fff" />
+      {/* Modern Header */}
+      <LinearGradient 
+        colors={["#3B82F6", "#1E3A8A"]}
+        style={styles.headerGradient}
+      >
+        <View style={styles.topBar}>
+          <View>
+            <Text style={styles.greetingText}>Good Morning!</Text>
+            <Text style={styles.balanceText}>Current Balance</Text>
+          </View>
+          <TouchableOpacity style={styles.profileButton}>
+            <Image 
+              source={{ uri: "https://via.placeholder.com/40" }}
+              style={styles.profileImage}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Balance Card */}
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceAmount}>LKR {total}</Text>
+          
+          <View style={styles.balanceDetails}>
+            <View style={styles.incomeExpense}>
+              <View style={styles.incomeContainer}>
+                <Icon name="arrow-up" size={16} color="#4CAF50" />
+                <Text style={styles.incomeText}>LKR {calculateIncome()}</Text>
+              </View>
+              <View style={styles.expenseContainer}>
+                <Icon name="arrow-down" size={16} color="#F44336" />
+                <Text style={styles.expenseText}>LKR {calculateExpense()}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Transaction List Header */}
+      <View style={styles.listHeader}>
+        <Text style={styles.listTitle}>Recent Transactions</Text>
+        <TouchableOpacity>
+          <Text style={styles.viewAllText}>View All</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Bank Card */}
-      <LinearGradient colors={["#3B82F6", "#1E3A8A"]} style={styles.bankCard}>
-        <Text style={styles.bankTitle}>Bank Name</Text>
-        <Image source={{ uri: "https://via.placeholder.com/50" }} style={styles.cardChip} />
-        <View style={styles.crdDetails}>
-          <Text style={styles.cardNumber}>Income</Text>
-          <Text style={styles.cardNumber}>Total</Text>
-          <Text style={styles.cardNumber}>Expense</Text>
-        </View>
-       
-        <Text style={styles.cardHolder}>John Doe</Text>
-      </LinearGradient>
+      {/* Transaction List */}
+      <FlatList
+        data={transactions}
+        renderItem={renderTransactionItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+      />
 
-    
+      {/* Floating Action Button */}
+      <TouchableOpacity 
+        style={styles.fab}
+        onPress={() => setModalVisible(true)}
+      >
+        <Icon name="plus" size={24} color="white" />
+      </TouchableOpacity>
 
-      {/* Transactions */}
-      <View style={styles.transactions}>
-        <Text style={styles.sectionTitle}>Latest Transactions</Text>
-        <View style={styles.transactionItem}>
-          <Text style={styles.transactionName}>Mark Zuck</Text>
-          <Text style={styles.transactionAmountPositive}>+237.00</Text>
-        </View>
-        <View style={styles.transactionItem}>
-          <Text style={styles.transactionName}>James Hiu</Text>
-          <Text style={styles.transactionAmountNegative}>-200.00</Text>
-        </View>
-        <View style={styles.transactionItem}>
-          <Text style={styles.transactionName}>Mark Zuck</Text>
-          <Text style={styles.transactionAmountPositive}>+237.00</Text>
-        </View>
-      </View>
+      {/* Edit Modal */}
+      <AddTransactionModal
+        visible={modalVisible}
+        onClose={() => {
+          setModalVisible(false);
+          setEditingTransaction(null);
+        }}
+        transaction={editingTransaction}
+      />
     </View>
   );
 }
@@ -58,90 +186,172 @@ export default function dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "#F8F9FD",
+  },
+  headerGradient: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 50,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   topBar: {
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 15,
-    backgroundColor: "#1E3A8A",
-    paddingHorizontal: 20,
-    
+    marginBottom: 25,
   },
-  crdDetails:{
-    flexDirection: 'row',
-    justifyContent: 'space-between', // Distribute space evenly between items
-    paddingHorizontal: 10,
+  greetingText: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+    marginBottom: 4,
   },
   balanceText: {
     color: "#fff",
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "500",
   },
-  profileButton: {
-    padding: 5,
-  },
-  bankCard: {
-    borderRadius: 12,
-    padding: 20,
-    marginVertical: 20,
-  },
-  bankTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  cardChip: {
+  profileImage: {
     width: 40,
-    height: 30,
-    marginVertical: 10,
+    height: 40,
+    borderRadius: 20,
   },
-  cardNumber: {
+  balanceCard: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 20,
+    padding: 20,
+    backdropFilter: "blur(10px)",
+  },
+  balanceAmount: {
     color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 32,
+    fontWeight: "700",
+    marginBottom: 15,
   },
-  cardHolder: {
-    color: "#fff",
-    marginTop: 5,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 20,
-  },
-  actionButton: {
-    alignItems: "center",
-  },
-  transactions: {
-    marginTop: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  transactionItem: {
+  balanceDetails: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
+    alignItems: "center",
   },
-  transactionName: {
-    fontSize: 16,
+  incomeExpense: {
+    flexDirection: "row",
+    gap: 20,
   },
-  transactionAmountPositive: {
-    fontSize: 16,
-    color: "green",
+  incomeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  transactionAmountNegative: {
+  expenseContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  incomeText: {
+    color: "#4CAF50",
+    fontWeight: "500",
+  },
+  expenseText: {
+    color: "#F44336",
+    fontWeight: "500",
+  },
+  listHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  listTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#2D2D2D",
+  },
+  viewAllText: {
+    color: "#3B82F6",
+    fontWeight: "500",
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+  },
+  transactionItem: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    marginVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
+  },
+  typeIndicator: {
+    width: 5,
+    height: "100%",
+    borderTopLeftRadius: 15,
+    borderBottomLeftRadius: 15,
+  },
+  transactionContent: {
+    flex: 1,
+    padding: 16,
+  },
+  transactionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  transactionCategory: {
     fontSize: 16,
-    color: "red",
+    fontWeight: "600",
+    color: "#2D2D2D",
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  transactionFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F5F5F5",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  transactionDate: {
+    fontSize: 12,
+    color: "#666",
+  },
+  typeBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  typeText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  fab: {
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+    backgroundColor: "#3B82F6",
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
 });

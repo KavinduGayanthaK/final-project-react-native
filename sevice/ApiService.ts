@@ -2,7 +2,7 @@ import axios, { AxiosResponse } from "axios";
 import { getToken, saveToken, removeToken } from "./TokenService";
 
 export const api = axios.create({
-    baseURL: "http://192.168.1.187:3000",
+    baseURL: "http://192.168.1.187:3001",
 });
 
 // Attach token to requests
